@@ -3,124 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>사내 툴 관리 시스템</title>
+    <title>Tool Management System</title>
     <style>
-        body { font-family: -apple-system, sans-serif; background-color: #f5f7fa; padding: 20px; text-align: center; }
-        .container { max-width: 400px; margin: 40px auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h1 { font-size: 24px; color: #333; margin-bottom: 20px; }
-        label { display: block; text-align: left; font-weight: bold; margin-bottom: 8px; color: #555; }
-        select { width: 100%; padding: 15px; font-size: 16px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; box-sizing: border-box; }
-        .btn { display: block; width: 100%; padding: 20px; font-size: 20px; font-weight: bold; color: white; border: none; border-radius: 12px; margin-bottom: 15px; cursor: pointer; }
-        .btn-rent { background-color: #007bff; }
-        .btn-rent:disabled { background-color: #ccc; cursor: not-allowed; }
-        .btn-return { background-color: #28a745; }
-        .status-msg { margin-top: 20px; font-size: 16px; font-weight: bold; min-height: 24px; }
-        .inventory-list { text-align: left; margin-top: 20px; font-size: 14px; color: #666; border-top: 1px solid #eee; pt-15px; }
+        :root { --primary: #007bff; --success: #28a745; --bg: #f8f9fa; }
+        body { font-family: 'Pretendard', -apple-system, sans-serif; background-color: var(--bg); color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        h1 { font-size: 22px; margin-bottom: 25px; color: #1a1a1a; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        
+        .form-group { text-align: left; margin-bottom: 15px; }
+        label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #666; }
+        select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; appearance: none; background: #fff url("data:image/svg+xml,...") no-repeat right 12px center; }
+        
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .btn { padding: 15px; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; color: white; }
+        .btn-rent { background-color: var(--primary); }
+        .btn-return { background-color: var(--success); }
+        .btn:active { transform: scale(0.98); opacity: 0.9; }
+        
+        .status-card { margin-top: 30px; padding: 20px; background: #f1f3f5; border-radius: 15px; text-align: left; }
+        .status-card h2 { font-size: 16px; margin-top: 0; border-bottom: 1px solid #dee2e6; padding-bottom: 10px; }
+        .log-item { font-size: 13px; padding: 8px 0; border-bottom: 1px dashed #ced4da; display: flex; justify-content: space-between; }
+        .log-item:last-child { border: none; }
+        .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; color: white; }
+        .bg-blue { background: var(--primary); }
+        .bg-green { background: var(--success); }
+        
+        #loader { display: none; font-size: 14px; color: #666; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🛠️ 공구 대여/반납</h1>
+    <h1>🛠️ 툴 관리 시스템</h1>
     
-    <label for="userName">사용자 선택</label>
-    <select id="userName">
-        <option value="">-- 이름을 선택하세요 --</option>
-        <option value="오현석">오현석</option>
-        <option value="최금래">최금래</option>
-        <option value="엄병준">엄병준</option>
-    </select>
+    <div class="form-group">
+        <label>사용자 선택</label>
+        <select id="userName">
+            <option value="오현석">오현석</option>
+            <option value="최금래">최금래</option>
+            <option value="엄병준">엄병준</option>
+        </select>
+    </div>
 
-    <label for="toolSelect">공구 선택</label>
-    <select id="toolSelect" onchange="checkStatus()">
-        <option value="전동드릴 A">전동드릴 A</option>
-        <option value="계측기 B">계측기 B</option>
-        <option value="노트북 C">노트북 C</option>
-    </select>
+    <div class="form-group">
+        <label>공구 선택</label>
+        <select id="toolSelect">
+            <option value="전동드릴 A">전동드릴 A</option>
+            <option value="계측기 B">계측기 B</option>
+            <option value="노트북 C">노트북 C</option>
+        </select>
+    </div>
 
-    <button id="rentBtn" class="btn btn-rent" onclick="submitStatus('대여중')">출고 (대여하기)</button>
-    <button id="returnBtn" class="btn btn-return" onclick="submitStatus('보관중')">입고 (반납하기)</button>
+    <div class="btn-group">
+        <button class="btn btn-rent" onclick="action('대여중')">대여하기</button>
+        <button class="btn btn-return" onclick="action('보관중')">반납하기</button>
+    </div>
 
-    <div id="status" class="status-msg"></div>
+    <div id="loader">데이터 전송 중...</div>
 
-    <div class="inventory-list">
-        <p><strong>[현재 도구 상태]</strong></p>
-        <div id="inventory"></div>
+    <div class="status-card">
+        <h2>최근 대여 이력 (실시간)</h2>
+        <div id="log-list">로딩 중...</div>
     </div>
 </div>
 
 <script>
-    // 도구 상태를 저장할 객체 (브라우저 저장소에서 불러오거나 초기화)
-    let toolData = JSON.parse(localStorage.getItem('toolStatus')) || {
-        "전동드릴 A": { status: "보관중", user: "" },
-        "계측기 B": { status: "보관중", user: "" },
-        "노트북 C": { status: "보관중", user: "" }
-    };
+    const SCRIPT_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnQhwNNjU7czuKLOduvEPbBf3ixxE-OTPiva3z7lMbyQAalBNNZFO4vanqe8q9nXpEuP5CbJEPOdcNszEJ5SL0Er_GFVo1rl3j7SrHOg2MHntlAGWDoYFOmvhkypWODhAPdSR0z_rD5JYnsIZbjXPtuagyQIINnnTe3xdxxAUbV9Efd1XzXUTS7An_5VnYDzCL--74EQ9CjoxkkNzU5_1IMVYI6Aza2Fq71_UELx5ElT_fnImuh9Oshg2cU_EbU0rjbGOXDrfN3iTFbTBcWp9m8WfuikhQ&lib=MmkW5cij7bpH0xxZkfZNYVj-jECZzWp2S";
 
-    // 초기 화면 업데이트
-    updateUI();
-
-    function submitStatus(status) {
+    async function action(status) {
         const name = document.getElementById('userName').value;
         const tool = document.getElementById('toolSelect').value;
+        const loader = document.getElementById('loader');
         
-        if (!name) {
-            alert('사용자를 선택해 주세요!');
-            return;
+        loader.style.display = 'block';
+
+        try {
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ userName: name, toolName: tool, status: status })
+            });
+            alert(`${tool} ${status} 완료!`);
+            loadData();
+        } catch (e) {
+            alert("오류가 발생했습니다.");
+        } finally {
+            loader.style.display = 'none';
         }
-
-        // 대여 시도 시 중복 체크
-        if (status === '대여중' && toolData[tool].status === '대여중') {
-            alert('이미 대여 중인 도구입니다.');
-            return;
-        }
-
-        // 반납 시도 시 본인이 빌린 건지 체크 (선택 사항)
-        // if (status === '보관중' && toolData[tool].user !== name) {
-        //     alert('본인이 대여한 도구만 반납할 수 있습니다.');
-        //     return;
-        // }
-
-        // 상태 업데이트
-        toolData[tool].status = status;
-        toolData[tool].user = status === '대여중' ? name : "";
-        
-        // 브라우저 저장소에 저장
-        localStorage.setItem('toolStatus', JSON.stringify(toolData));
-
-        // 결과 표시
-        const statusDiv = document.getElementById('status');
-        statusDiv.innerText = `✅ [${name}]님이 [${tool}]을(를) [${status}] 하셨습니다.`;
-        statusDiv.style.color = status === '대여중' ? '#007bff' : '#28a745';
-        
-        updateUI();
     }
 
-    function updateUI() {
-        const inventoryDiv = document.getElementById('inventory');
-        inventoryDiv.innerHTML = '';
+    async function loadData() {
+        try {
+            const res = await fetch(SCRIPT_URL);
+            const data = await res.json();
+            const logList = document.getElementById('log-list');
+            logList.innerHTML = '';
 
-        for (const [tool, info] of Object.entries(toolData)) {
-            const p = document.createElement('p');
-            p.innerText = `${tool}: ${info.status} ${info.user ? `(${info.user})` : ''}`;
-            inventoryDiv.appendChild(p);
-        }
-        checkStatus();
-    }
-
-    function checkStatus() {
-        const tool = document.getElementById('toolSelect').value;
-        const rentBtn = document.getElementById('rentBtn');
-        const statusDiv = document.getElementById('status');
-
-        if (toolData[tool].status === '대여중') {
-            rentBtn.disabled = true;
-            rentBtn.innerText = "이미 대여 중입니다";
-        } else {
-            rentBtn.disabled = false;
-            rentBtn.innerText = "출고 (대여하기)";
+            // 최신 데이터 5개만 출력
+            data.slice(1).reverse().slice(0, 5).forEach(row => {
+                const time = new Date(row[0]).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const badgeClass = row[3] === '대여중' ? 'bg-blue' : 'bg-green';
+                logList.innerHTML += `
+                    <div class="log-item">
+                        <span><strong>${row[1]}</strong> - ${row[2]}</span>
+                        <span><span class="badge ${badgeClass}">${row[3]}</span> <small>${time}</small></span>
+                    </div>`;
+            });
+        } catch (e) {
+            document.getElementById('log-list').innerText = "데이터를 불러올 수 없습니다.";
         }
     }
+
+    loadData(); // 초기 실행
+    setInterval(loadData, 30000); // 30초마다 자동 새로고침
 </script>
 
 </body>
