@@ -9,11 +9,13 @@
         .container { max-width: 400px; margin: 40px auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         h1 { font-size: 24px; color: #333; margin-bottom: 20px; }
         label { display: block; text-align: left; font-weight: bold; margin-bottom: 8px; color: #555; }
-        input, select { width: 100%; padding: 15px; font-size: 16px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; box-sizing: border-box; }
+        select { width: 100%; padding: 15px; font-size: 16px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; box-sizing: border-box; }
         .btn { display: block; width: 100%; padding: 20px; font-size: 20px; font-weight: bold; color: white; border: none; border-radius: 12px; margin-bottom: 15px; cursor: pointer; }
         .btn-rent { background-color: #007bff; }
+        .btn-rent:disabled { background-color: #ccc; cursor: not-allowed; }
         .btn-return { background-color: #28a745; }
-        .status-msg { margin-top: 20px; font-size: 16px; font-weight: bold; }
+        .status-msg { margin-top: 20px; font-size: 16px; font-weight: bold; min-height: 24px; }
+        .inventory-list { text-align: left; margin-top: 20px; font-size: 14px; color: #666; border-top: 1px solid #eee; pt-15px; }
     </style>
 </head>
 <body>
@@ -21,42 +23,103 @@
 <div class="container">
     <h1>🛠️ 공구 대여/반납</h1>
     
-    <!-- 사용자 이름 입력란 -->
-    <label for="userName">사용자 이름</label>
-    <input type="text" id="userName" placeholder="이름을 입력하세요 (예: 홍길동)">
+    <label for="userName">사용자 선택</label>
+    <select id="userName">
+        <option value="">-- 이름을 선택하세요 --</option>
+        <option value="오현석">오현석</option>
+        <option value="최금래">최금래</option>
+        <option value="엄병준">엄병준</option>
+    </select>
 
-    <!-- 공구 선택창 -->
     <label for="toolSelect">공구 선택</label>
-    <select id="toolSelect">
+    <select id="toolSelect" onchange="checkStatus()">
         <option value="전동드릴 A">전동드릴 A</option>
         <option value="계측기 B">계측기 B</option>
         <option value="노트북 C">노트북 C</option>
     </select>
 
-    <!-- 대여/반납 버튼 -->
-    <button class="btn btn-rent" onclick="submitStatus('대여중')">출고 (대여하기)</button>
-    <button class="btn btn-return" onclick="submitStatus('보관중')">입고 (반납하기)</button>
+    <button id="rentBtn" class="btn btn-rent" onclick="submitStatus('대여중')">출고 (대여하기)</button>
+    <button id="returnBtn" class="btn btn-return" onclick="submitStatus('보관중')">입고 (반납하기)</button>
 
     <div id="status" class="status-msg"></div>
+
+    <div class="inventory-list">
+        <p><strong>[현재 도구 상태]</strong></p>
+        <div id="inventory"></div>
+    </div>
 </div>
 
 <script>
+    // 도구 상태를 저장할 객체 (브라우저 저장소에서 불러오거나 초기화)
+    let toolData = JSON.parse(localStorage.getItem('toolStatus')) || {
+        "전동드릴 A": { status: "보관중", user: "" },
+        "계측기 B": { status: "보관중", user: "" },
+        "노트북 C": { status: "보관중", user: "" }
+    };
+
+    // 초기 화면 업데이트
+    updateUI();
+
     function submitStatus(status) {
-        const name = document.getElementById('userName').value.trim();
+        const name = document.getElementById('userName').value;
         const tool = document.getElementById('toolSelect').value;
         
         if (!name) {
-            alert('이름을 입력해 주세요!');
+            alert('사용자를 선택해 주세요!');
             return;
         }
+
+        // 대여 시도 시 중복 체크
+        if (status === '대여중' && toolData[tool].status === '대여중') {
+            alert('이미 대여 중인 도구입니다.');
+            return;
+        }
+
+        // 반납 시도 시 본인이 빌린 건지 체크 (선택 사항)
+        // if (status === '보관중' && toolData[tool].user !== name) {
+        //     alert('본인이 대여한 도구만 반납할 수 있습니다.');
+        //     return;
+        // }
+
+        // 상태 업데이트
+        toolData[tool].status = status;
+        toolData[tool].user = status === '대여중' ? name : "";
         
-        // 화면에 성공 메시지 띄우기
+        // 브라우저 저장소에 저장
+        localStorage.setItem('toolStatus', JSON.stringify(toolData));
+
+        // 결과 표시
         const statusDiv = document.getElementById('status');
-        statusDiv.innerText = `✅ [${name}]님이 [${tool}]을(를) [${status}] 상태로 등록했습니다.`;
+        statusDiv.innerText = `✅ [${name}]님이 [${tool}]을(를) [${status}] 하셨습니다.`;
         statusDiv.style.color = status === '대여중' ? '#007bff' : '#28a745';
         
-        // 입력창 초기화
-        document.getElementById('userName').value = '';
+        updateUI();
+    }
+
+    function updateUI() {
+        const inventoryDiv = document.getElementById('inventory');
+        inventoryDiv.innerHTML = '';
+
+        for (const [tool, info] of Object.entries(toolData)) {
+            const p = document.createElement('p');
+            p.innerText = `${tool}: ${info.status} ${info.user ? `(${info.user})` : ''}`;
+            inventoryDiv.appendChild(p);
+        }
+        checkStatus();
+    }
+
+    function checkStatus() {
+        const tool = document.getElementById('toolSelect').value;
+        const rentBtn = document.getElementById('rentBtn');
+        const statusDiv = document.getElementById('status');
+
+        if (toolData[tool].status === '대여중') {
+            rentBtn.disabled = true;
+            rentBtn.innerText = "이미 대여 중입니다";
+        } else {
+            rentBtn.disabled = false;
+            rentBtn.innerText = "출고 (대여하기)";
+        }
     }
 </script>
 
