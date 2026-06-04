@@ -5,71 +5,133 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>툴 관리 시스템</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; text-align: center; }
-        .container { max-width: 400px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        select, button { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; }
-        button { border: none; color: white; font-weight: bold; cursor: pointer; }
-        .btn-rent { background: #007bff; margin-top: 20px; }
-        .btn-return { background: #28a745; }
-        .log { margin-top: 20px; text-align: left; font-size: 13px; border-top: 1px solid #eee; padding-top: 10px; }
+        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --bg: #f0f2f5; }
+        body { font-family: sans-serif; background: var(--bg); padding: 20px; text-align: center; color: #333; }
+        .container { max-width: 450px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        
+        /* 현황판 스타일 */
+        .inventory-list { margin-bottom: 25px; text-align: left; }
+        .item-row { 
+            background: #f8f9fa; 
+            padding: 12px 15px; 
+            border-radius: 10px; 
+            margin-bottom: 8px; 
+            border: 1px solid #eee;
+            font-size: 16px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .bg-rent { color: var(--danger); } /* 대여중 */
+        .bg-ok { color: var(--success); }  /* 장비실 */
+
+        select, button { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; box-sizing: border-box; }
+        button { border: none; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:active { transform: scale(0.95); }
+        .btn-rent { background: var(--primary); margin-top: 20px; }
+        .btn-return { background: var(--success); }
+        
+        .log { margin-top: 20px; text-align: left; font-size: 13px; border-top: 1px solid #eee; padding-top: 10px; max-height: 120px; overflow-y: auto; color: #888; }
+        #loader { font-size: 12px; color: #666; margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>🛠️ 툴 대여 시스템</h2>
-        <label>사용자: 
-            <select id="user">
-                <option value="오현석">오현석</option>
-                <option value="최금래">최금래</option>
-                <option value="엄병준">엄병준</option>
-            </select>
-        </label>
-        <label>공구: 
-            <select id="tool">
-                <option value="전동드릴 A">전동드릴 A</option>
-                <option value="계측기 B">계측기 B</option>
-                <option value="노트북 C">노트북 C</option>
-            </select>
-        </label>
+        <h2>🛠️ 실시간 장비 현황</h2>
+        
+        <div class="inventory-list" id="inventory">
+            <div class="item-row">a / <span class="bg-ok">장비실</span></div>
+            <div class="item-row">b / <span class="bg-ok">장비실</span></div>
+            <div class="item-row">c / <span class="bg-ok">장비실</span></div>
+            <div class="item-row">d / <span class="bg-ok">장비실</span></div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+
+        <div style="text-align: left; font-size: 14px; font-weight: bold; color: #555;">사용자 선택</div>
+        <select id="user">
+            <option value="오현석">오현석</option>
+            <option value="최금래">최금래</option>
+            <option value="엄병준">엄병준</option>
+        </select>
+
+        <div style="text-align: left; font-size: 14px; font-weight: bold; color: #555; margin-top: 15px;">장비 선택</div>
+        <select id="tool">
+            <option value="a">a</option>
+            <option value="b">b</option>
+            <option value="c">c</option>
+            <option value="d">d</option>
+        </select>
+        
         <button class="btn-rent" onclick="send('대여중')">출고 (대여)</button>
-        <button class="btn-return" onclick="send('보관중')">입고 (반납)</button>
-        <div id="result" style="margin-top:15px; font-weight:bold;"></div>
+        <button class="btn-return" onclick="send('장비실')">입고 (반납)</button>
+        
+        <div id="loader">⏳ 데이터를 처리하고 있습니다...</div>
         <div id="history" class="log">최근 기록 로딩 중...</div>
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz4s8LNCLup3HnLojYmRZFEr3BdLtv9M0puu5jETgJ8TRRc5jlIm7Yc4eBYP5ARM7dN/exec"; // <-- 여기에 붙여넣기
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz4s8LNCLup3HnLojYmRZFEr3BdLtv9M0puu5jETgJ8TRRc5jlIm7Yc4eBYP5ARM7dN/exec"; 
 
         async function send(status) {
             const userName = document.getElementById('user').value;
             const toolName = document.getElementById('tool').value;
-            const resultDiv = document.getElementById('result');
-            resultDiv.innerText = "⏳ 처리 중...";
+            const loader = document.getElementById('loader');
+            loader.style.display = 'block';
 
             try {
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
                     body: JSON.stringify({ userName, toolName, status })
                 });
-                resultDiv.innerText = "✅ 완료되었습니다!";
-                loadHistory();
+                await loadData(); 
+                loader.style.display = 'none';
             } catch (e) {
-                resultDiv.innerText = "❌ 오류 발생: " + e.message;
+                alert("❌ 전송 실패");
+                loader.style.display = 'none';
             }
         }
 
-        async function loadHistory() {
+        async function loadData() {
             try {
                 const res = await fetch(SCRIPT_URL);
                 const data = await res.json();
+                const records = data.slice(1).reverse();
+
                 const historyDiv = document.getElementById('history');
-                historyDiv.innerHTML = "<strong>[최근 기록]</strong><br>";
-                data.slice(1).reverse().slice(0, 5).forEach(row => {
-                    historyDiv.innerHTML += `• ${row[1]}: ${row[2]} (${row[3]})<br>`;
+                historyDiv.innerHTML = "<strong>[최근 로그]</strong><br>";
+                records.slice(0, 3).forEach(row => {
+                    historyDiv.innerHTML += `• ${row[2]} - ${row[1]} (${row[3]})<br>`;
                 });
-            } catch (e) { console.log("로드 실패"); }
+
+                const tools = ["a", "b", "c", "d"];
+                const inventoryDiv = document.getElementById('inventory');
+                inventoryDiv.innerHTML = '';
+
+                tools.forEach(tName => {
+                    const lastRecord = records.find(r => r[2] === tName);
+                    const status = lastRecord ? lastRecord[3] : "장비실";
+                    const user = (status === "대여중" && lastRecord) ? lastRecord[1] : "";
+                    
+                    let displayInfo = "";
+                    if (status === "대여중") {
+                        displayInfo = `${tName} / ${user} / <span class="bg-rent">대여중</span>`;
+                    } else {
+                        displayInfo = `${tName} / <span class="bg-ok">장비실</span>`;
+                    }
+
+                    inventoryDiv.innerHTML += `<div class="item-row">${displayInfo}</div>`;
+                });
+
+            } catch (e) {
+                console.log("로드 실패");
+            }
         }
-        loadHistory();
+
+        loadData();
+        setInterval(loadData, 20000); 
     </script>
 </body>
 </html>
