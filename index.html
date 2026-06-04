@@ -9,7 +9,6 @@
         body { font-family: sans-serif; background: var(--bg); padding: 20px; text-align: center; color: #333; }
         .container { max-width: 450px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         
-        /* 현황판 스타일 */
         .inventory-list { margin-bottom: 25px; text-align: left; }
         .item-row { 
             background: #f8f9fa; 
@@ -24,12 +23,13 @@
             justify-content: center;
             gap: 5px;
         }
-        .bg-rent { color: var(--danger); } /* 대여중 */
-        .bg-ok { color: var(--success); }  /* 장비실 */
+        .bg-rent { color: var(--danger); }
+        .bg-ok { color: var(--success); }
 
         select, button { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; box-sizing: border-box; }
         button { border: none; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        button:active { transform: scale(0.95); }
+        button:disabled { background-color: #ccc !important; cursor: not-allowed; opacity: 0.7; }
+        
         .btn-rent { background: var(--primary); margin-top: 20px; }
         .btn-return { background: var(--success); }
         
@@ -58,15 +58,15 @@
         </select>
 
         <div style="text-align: left; font-size: 14px; font-weight: bold; color: #555; margin-top: 15px;">장비 선택</div>
-        <select id="tool">
+        <select id="tool" onchange="checkButtonStatus()">
             <option value="a">a</option>
             <option value="b">b</option>
             <option value="c">c</option>
             <option value="d">d</option>
         </select>
         
-        <button class="btn-rent" onclick="send('대여중')">출고 (대여)</button>
-        <button class="btn-return" onclick="send('장비실')">입고 (반납)</button>
+        <button id="rentBtn" class="btn-rent" onclick="send('대여중')">출고 (대여)</button>
+        <button id="returnBtn" class="btn-return" onclick="send('장비실')">입고 (반납)</button>
         
         <div id="loader">⏳ 데이터를 처리하고 있습니다...</div>
         <div id="history" class="log">최근 기록 로딩 중...</div>
@@ -74,11 +74,22 @@
 
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz4s8LNCLup3HnLojYmRZFEr3BdLtv9M0puu5jETgJ8TRRc5jlIm7Yc4eBYP5ARM7dN/exec"; 
+        let currentData = { "a": "장비실", "b": "장비실", "c": "장비실", "d": "장비실" }; 
 
         async function send(status) {
             const userName = document.getElementById('user').value;
             const toolName = document.getElementById('tool').value;
             const loader = document.getElementById('loader');
+
+            if (status === '대여중' && currentData[toolName] === '대여중') {
+                alert("이미 대여 중인 장비입니다.");
+                return;
+            }
+            if (status === '장비실' && currentData[toolName] === '장비실') {
+                alert("이미 장비실에 있는 장비입니다.");
+                return;
+            }
+
             loader.style.display = 'block';
 
             try {
@@ -112,26 +123,48 @@
 
                 tools.forEach(tName => {
                     const lastRecord = records.find(r => r[2] === tName);
-                    const status = lastRecord ? lastRecord[3] : "장비실";
-                    const user = (status === "대여중" && lastRecord) ? lastRecord[1] : "";
+                    // '대여중' 기록이 있는 경우에만 대여중으로 표시, 그 외(반납 포함)는 모두 '장비실'
+                    const status = (lastRecord && lastRecord[3] === "대여중") ? "대여중" : "장비실";
+                    const user = (status === "대여중") ? lastRecord[1] : "";
                     
+                    currentData[tName] = status;
+
                     let displayInfo = "";
                     if (status === "대여중") {
                         displayInfo = `${tName} / ${user} / <span class="bg-rent">대여중</span>`;
                     } else {
                         displayInfo = `${tName} / <span class="bg-ok">장비실</span>`;
                     }
-
                     inventoryDiv.innerHTML += `<div class="item-row">${displayInfo}</div>`;
                 });
 
+                checkButtonStatus();
+
             } catch (e) {
-                console.log("로드 실패");
+                console.log("데이터 로딩 중...");
+            }
+        }
+
+        function checkButtonStatus() {
+            const selectedTool = document.getElementById('tool').value;
+            const rentBtn = document.getElementById('rentBtn');
+            const returnBtn = document.getElementById('returnBtn');
+            
+            if (currentData[selectedTool] === '대여중') {
+                rentBtn.disabled = true;
+                rentBtn.innerText = "이미 대여중";
+                returnBtn.disabled = false;
+                returnBtn.innerText = "입고 (반납)";
+            } else {
+                rentBtn.disabled = false;
+                rentBtn.innerText = "출고 (대여)";
+                returnBtn.disabled = true;
+                returnBtn.innerText = "이미 장비실";
             }
         }
 
         loadData();
-        setInterval(loadData, 20000); 
+        setInterval(loadData, 10000); 
     </script>
 </body>
 </html>
