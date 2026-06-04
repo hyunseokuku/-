@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사내 툴 관리 시스템</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; background-color: #f5f7fa; padding: 20px; text-align: center; }
+        .container { max-width: 400px; margin: 40px auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { font-size: 24px; color: #333; margin-bottom: 20px; }
+        label { display: block; text-align: left; font-weight: bold; margin-bottom: 8px; color: #555; }
+        input, select { width: 100%; padding: 15px; font-size: 16px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; box-sizing: border-box; }
+        .btn { display: block; width: 100%; padding: 20px; font-size: 20px; font-weight: bold; color: white; border: none; border-radius: 12px; margin-bottom: 15px; cursor: pointer; }
+        .btn-rent { background-color: #007bff; }
+        .btn-return { background-color: #28a745; }
+        .status-msg { margin-top: 20px; font-size: 16px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🛠️ 공구 대여/반납</h1>
+    
+    <!-- 사용자 이름 입력란 -->
+    <label for="userName">사용자 이름</label>
+    <input type="text" id="userName" placeholder="이름을 입력하세요 (예: 홍길동)">
+
+    <!-- 공구 선택창 -->
+    <label for="toolSelect">공구 선택</label>
+    <select id="toolSelect">
+        <option value="전동드릴 A">전동드릴 A</option>
+        <option value="계측기 B">계측기 B</option>
+        <option value="노트북 C">노트북 C</option>
+    </select>
+
+    <!-- 대여/반납 버튼 -->
+    <button class="btn btn-rent" onclick="submitStatus('대여중')">출고 (대여하기)</button>
+    <button class="btn btn-return" onclick="submitStatus('보관중')">입고 (반납하기)</button>
+
+    <div id="status" class="status-msg"></div>
+</div>
+
+<script>
+    function submitStatus(status) {
+        const name = document.getElementById('userName').value.trim();
+        const tool = document.getElementById('toolSelect').value;
+        
+        if (!name) {
+            alert('이름을 입력해 주세요!');
+            return;
+        }
+        
+        // 화면에 성공 메시지 띄우기
+        const statusDiv = document.getElementById('status');
+        statusDiv.innerText = `✅ [${name}]님이 [${tool}]을(를) [${status}] 상태로 등록했습니다.`;
+        statusDiv.style.color = status === '대여중' ? '#007bff' : '#28a745';
+        
+        // 입력창 초기화
+        document.getElementById('userName').value = '';
+    }
+</script>
+
+</body>
+</html>
